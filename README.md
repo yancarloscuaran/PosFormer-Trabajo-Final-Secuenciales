@@ -72,6 +72,7 @@ python train.py test --config config.yaml
 ## 🙏 Créditos
 
 Basado en PosFormer de SJTU-DeepVisionLab - https://github.com/SJTU-DeepVisionLab/PosFormer
+
 Guan, T., Lin, C., Shen, W., & Yang, X. (n.d.). PosFormer: Recognizing Complex Handwritten Mathematical Expression with Position Forest Transformer. Retrieved March 14, 2026, from https://github.com/SJTU-DeepVisionLab/PosFormer 
 
 Ver [CREDITOS.md](CREDITOS.md) para información completa.
