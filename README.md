@@ -172,7 +172,7 @@ $$L_{total} = \frac{L_{seq} + 0.25 \cdot L_{layer} + 0.25 \cdot L_{pos}}{1.5}$$
 
 En validación/test no se usa el PosDecoder. El encoder procesa la imagen **feature [1, h, w, 256]**. **Beam search** inicia con `<sos>` y en cada paso ejecuta el Decoder completo para obtener `logits → log_softmax → topk(10)` selecciona los 10 tokens más probables. Mantiene 10 caminos activos, sumando log-probabilidades acumuladas. Repite hasta `<eos>` o `max_len=200`. Selecciona la secuencia con mayor probabilidad acumulada total y entreag la secuencia LaTeX final.
 
-# ReferenciaS:
+# Referencias:
 
 Guan, T., Lin, C., Shen, W., & Yang, X. (2024, September). Posformer: recognizing complex handwritten mathematical expression with position forest transformer. In European Conference on Computer Vision (pp. 130-147). Cham: Springer Nature Switzerland. From:https://doi.org/10.48550/arXiv.2407.07764.
 
