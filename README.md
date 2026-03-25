@@ -164,8 +164,8 @@ Este componente es que se elimina por completo durante la fase de inferencia. Da
 
 El entrenamiento utiliza una **Multi-task Loss** que combina la **Cross-Entropy** de la secuencia LaTeX con las señales de anidación y posición relativa del PosDecoder. Para evitar distorsiones en el gradiente, se aplican padding masks que aseguran que el modelo ignore los tokens no válidos en el cálculo del error. Los términos auxiliares se ponderan con un factor de 0.25 y la suma total se normaliza por 1.5, garantizando que el reconocimiento de texto permanezca como la tarea prioritaria.
 
-<img width="204" height="37" alt="image" src="https://github.com/user-attachments/assets/10e806f3-5701-4393-b11a-85270e763280" />
+$$L_{total} = \frac{L_{seq} + 0.25 \cdot L_{layer} + 0.25 \cdot L_{pos}}{1.5}$$
 
 ### $\color{#4682B4}{\textbf{7. Inferencia — Beam Search}}$
 
-En validación/test no se usa el PosDecoder. El encoder procesa la imagen → feature [1, h, w, 256]. **Beam search** inicia con `<sos>` y en cada paso ejecuta el Decoder completo para obtener `logits → log_softmax → topk(10)` selecciona los 10 tokens más probables. Mantiene 10 caminos activos, sumando log-probabilidades acumuladas. Repite hasta `<eos>` o `max_len=200`. Selecciona la secuencia con mayor probabilidad acumulada total y entreag la secuencia LaTeX final.
+En validación/test no se usa el PosDecoder. El encoder procesa la imagen **feature [1, h, w, 256]**. **Beam search** inicia con `<sos>` y en cada paso ejecuta el Decoder completo para obtener `logits → log_softmax → topk(10)` selecciona los 10 tokens más probables. Mantiene 10 caminos activos, sumando log-probabilidades acumuladas. Repite hasta `<eos>` o `max_len=200`. Selecciona la secuencia con mayor probabilidad acumulada total y entreag la secuencia LaTeX final.
