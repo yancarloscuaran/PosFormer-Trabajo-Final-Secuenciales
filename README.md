@@ -3,7 +3,7 @@
 ## Contenido
 
 - [Marco Teórico: Arquitectura PosFormer](#marco-teórico-explicación-detallada-de-la-arquitectura-posformer)
-- [Metodología y Proceso de Implementación](METODOLOGIA.md)
+- [Metodología y Proceso de Implementación](METODOLOGÍA.md)
 - [Resultados, Análisis y Conclusiones](RESULTADOS.md)
   
 ## 📑 Resumen (Abstract)
