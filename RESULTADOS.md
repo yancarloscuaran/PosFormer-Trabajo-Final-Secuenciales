@@ -31,7 +31,7 @@ A continuación se muestran capturas propias de la ejecución local del modelo y
 
 Captura 1: Resultados de CROHME 2014 en local.
 
-<img width="801" height="867" alt="image" src="https://github.com/user-attachments/assets/77ba51af-b8ec-4add-a93f-88f196c78a3a" />
+<img width="801" height="867" alt="Captura de Streamlit" src="/PosFormer/images/streamlit.png" />
 
 Captura 2: Captura de Streamlit con una imagen de entrada y su resultado LaTeX renderizado.
 
