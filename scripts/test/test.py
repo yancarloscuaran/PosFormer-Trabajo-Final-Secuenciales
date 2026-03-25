@@ -38,14 +38,23 @@ def main(version: str, test_year: str):
     print(f"Test with fname: {fnames[0]}")
     # trainer = Trainer(logger=False, gpus=1)
     trainer = Trainer(logger=False, gpus=0, accelerator='cpu')
-
-    dm = CROHMEDatamodule(test_year=test_year, eval_batch_size = 1)
+    
+    #cambio 3
+    zip_file = "data_MNE.zip" if test_year in ["N1", "N2", "N3"] else "data_crohme.zip"
+    dm = CROHMEDatamodule(zipfile_path=zip_file, test_year=test_year, eval_batch_size=1)
+    #dm = CROHMEDatamodule(test_year=test_year, eval_batch_size = 1)
 
     model = LitPosFormer.load_from_checkpoint(ckp_path)
     trainer.test(model, datamodule=dm)
     caption = {}
-    with zipfile.ZipFile("data_crohme.zip") as archive:
-        with archive.open(f"data/{test_year}/caption.txt", "r") as f:
+    #cambio 1
+    zip_file = "data_MNE.zip" if test_year in ["N1", "N2", "N3"] else "data_crohme.zip"
+    with zipfile.ZipFile(zip_file) as archive:
+        #with zipfile.ZipFile("data_crohme.zip") as archive:
+        #cambio 2
+        folder = "data_MNE" if test_year in ["N1", "N2", "N3"] else "data"
+        with archive.open(f"{folder}/{test_year}/caption.txt", "r") as f:
+            #with archive.open(f"data/{test_year}/caption.txt", "r") as f:
             caption_lines = [line.decode('utf-8').strip() for line in f.readlines()]
             for caption_line in caption_lines:
                 caption_parts = caption_line.split()
