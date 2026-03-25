@@ -1,5 +1,11 @@
 # 📊 PosFormer - Reconocimiento de Ecuaciones Matemáticas
 
+## Contenido
+
+- [Marco Teórico: Arquitectura PosFormer](#marco-teórico-explicación-detallada-de-la-arquitectura-posformer)
+- [Metodología y Proceso de Implementación](PosFormer-Trabajo-Final-Secuenciales/METODOLOGIA.md)
+- [Resultados, Análisis y Conclusiones](PosFormer-Trabajo-Final-Secuenciales/RESULTADOS.md)
+  
 ## 📑 Resumen (Abstract)
 
 Este trabajo describe la implementación y el proceso de inferencia de PosFormer (Position Forest Transformer), una arquitectura encoder-decoder orientada al reconocimiento de expresiones matemáticas manuscritas (HMER), fundamentada en la propuesta original de Guan et al. (2024). El modelo optimiza la transcripción de imágenes de ecuaciones a secuencias LaTeX mediante la integración de un Position Forest, diseñado para capturar de forma robusta las complejas relaciones jerárquicas y espaciales intrínsecas a la notación matemática, junto con un módulo de Corrección de Atención Implícita (IAC) que refina la precisión del mecanismo de atención durante la decodificación. A través de este enfoque, se aborda la naturaleza bidimensional y estructural de los símbolos manuscritos, mejorando la fidelidad y el rendimiento en tareas de recuperación de secuencias técnicas.
@@ -21,10 +27,6 @@ PosFormer incorpora explícitamente la comprensión de las relaciones posicional
 En este trabajo implementamos el proceso de inferencia usando los pesos preentrenados provistos por los autores, evidenciamos su funcionamiento sobre los datasets de evaluación CROHME, M2E y MNE, y resultados funcionales mediante una interfaz interactiva desarrollada con Streamlit. 
 
 El proyecto implementa una arquitectura dual-decoder que predice símbolos y sus posiciones en la imagen simultáneamente. Este es un ejericicio de procesamiento de datos secuenciales donde la entrada es una imagen y la salida es una secuencia de tokens LaTeX generada de forma autoregresiva
-
-**Referencia:** 
-
-Guan, T., Lin, C., Shen, W., & Yang, X. (2024, September). Posformer: recognizing complex handwritten mathematical expression with position forest transformer. In European Conference on Computer Vision (pp. 130-147). Cham: Springer Nature Switzerland. From:https://doi.org/10.48550/arXiv.2407.07764.
 
 **Repositorio Original:** https://github.com/SJTU-DeepVisionLab/PosFormer
 
@@ -97,7 +99,7 @@ MIT License - Ver [LICENSE](LICENSE)
 ```
 - This code is only free for academic research purposes and licensed under the 2-clause BSD License. Parts of this project contain code from other sources, which are subject to their respective licenses.
 ```
-=======
+
 # Marco Teórico: Explicación Detallada de la Arquitectura PosFormer
 
 <img width="2000" height="1143" alt="image" src="https://github.com/user-attachments/assets/65262cde-df73-48ba-9d7a-198027484863" />
@@ -169,3 +171,7 @@ $$L_{total} = \frac{L_{seq} + 0.25 \cdot L_{layer} + 0.25 \cdot L_{pos}}{1.5}$$
 ### $\color{#4682B4}{\textbf{7. Inferencia — Beam Search}}$
 
 En validación/test no se usa el PosDecoder. El encoder procesa la imagen **feature [1, h, w, 256]**. **Beam search** inicia con `<sos>` y en cada paso ejecuta el Decoder completo para obtener `logits → log_softmax → topk(10)` selecciona los 10 tokens más probables. Mantiene 10 caminos activos, sumando log-probabilidades acumuladas. Repite hasta `<eos>` o `max_len=200`. Selecciona la secuencia con mayor probabilidad acumulada total y entreag la secuencia LaTeX final.
+
+# Referencia:
+
+Guan, T., Lin, C., Shen, W., & Yang, X. (2024, September). Posformer: recognizing complex handwritten mathematical expression with position forest transformer. In European Conference on Computer Vision (pp. 130-147). Cham: Springer Nature Switzerland. From:https://doi.org/10.48550/arXiv.2407.07764.
