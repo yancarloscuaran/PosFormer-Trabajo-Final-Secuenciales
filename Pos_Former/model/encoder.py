@@ -13,9 +13,14 @@ from .pos_enc import ImgPosEnc
 
 # DenseNet-B
 class _Bottleneck(nn.Module):
+    """
+    Implementa un bloque de cuello de botella para DenseNet.
+    Este bloque utiliza convoluciones 1x1 y 3x3 para reducir y procesar las características,
+    mejorando la reutilización de características y el flujo de gradiente.
+    """
     def __init__(self, n_channels: int, growth_rate: int, use_dropout: bool):
         super(_Bottleneck, self).__init__()
-        interChannels = 4 * growth_rate
+        interChannels = 4 * growth_rate  # Canales intermedios para convolución 1x1
         self.bn1 = nn.BatchNorm2d(interChannels)
         self.conv1 = nn.Conv2d(n_channels, interChannels, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(growth_rate)
@@ -26,18 +31,23 @@ class _Bottleneck(nn.Module):
         self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
+        # Aplicar convoluciones y normalización
         out = F.relu(self.bn1(self.conv1(x)), inplace=True)
         if self.use_dropout:
             out = self.dropout(out)
         out = F.relu(self.bn2(self.conv2(out)), inplace=True)
         if self.use_dropout:
             out = self.dropout(out)
+        # Concatenar la entrada con la salida para reutilizar características
         out = torch.cat((x, out), 1)
         return out
 
-
 # single layer
 class _SingleLayer(nn.Module):
+    """
+    Implementa una capa simple para DenseNet.
+    Utiliza una convolución 3x3 para procesar las características y las concatena con la entrada.
+    """
     def __init__(self, n_channels: int, growth_rate: int, use_dropout: bool):
         super(_SingleLayer, self).__init__()
         self.bn1 = nn.BatchNorm2d(n_channels)
@@ -48,15 +58,21 @@ class _SingleLayer(nn.Module):
         self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
+        # Procesar características con convolución 3x3
         out = self.conv1(F.relu(x, inplace=True))
         if self.use_dropout:
             out = self.dropout(out)
+        # Concatenar la entrada con la salida
         out = torch.cat((x, out), 1)
         return out
 
-
 # transition layer
 class _Transition(nn.Module):
+    """
+    Implementa una capa de transición para DenseNet.
+    Reduce la resolución espacial mediante un promedio de agrupación (average pooling)
+    y ajusta el número de canales con una convolución 1x1.
+    """
     def __init__(self, n_channels: int, n_out_channels: int, use_dropout: bool):
         super(_Transition, self).__init__()
         self.bn1 = nn.BatchNorm2d(n_out_channels)
@@ -65,14 +81,20 @@ class _Transition(nn.Module):
         self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
+        # Reducir canales y aplicar normalización
         out = F.relu(self.bn1(self.conv1(x)), inplace=True)
         if self.use_dropout:
             out = self.dropout(out)
+        # Reducir resolución espacial
         out = F.avg_pool2d(out, 2, ceil_mode=True)
         return out
 
-
 class DenseNet(nn.Module):
+    """
+    Implementa el backbone DenseNet para extraer características visuales.
+    Este modelo utiliza bloques densos y capas de transición para procesar imágenes,
+    reduciendo progresivamente la resolución espacial mientras aumenta la profundidad de las características.
+    """
     def __init__(
         self,
         growth_rate: int,
@@ -82,12 +104,13 @@ class DenseNet(nn.Module):
         use_dropout: bool = True,
     ):
         super(DenseNet, self).__init__()
-        n_dense_blocks = num_layers
-        n_channels = 2 * growth_rate
+        n_dense_blocks = num_layers  # Número de bloques densos
+        n_channels = 2 * growth_rate  # Canales iniciales
         self.conv1 = nn.Conv2d(
             1, n_channels, kernel_size=7, padding=3, stride=2, bias=False
         )
         self.norm1 = nn.BatchNorm2d(n_channels)
+        # Primer bloque denso
         self.dense1 = self._make_dense(
             n_channels, growth_rate, n_dense_blocks, bottleneck, use_dropout
         )
@@ -96,6 +119,7 @@ class DenseNet(nn.Module):
         self.trans1 = _Transition(n_channels, n_out_channels, use_dropout)
 
         n_channels = n_out_channels
+        # Segundo bloque denso
         self.dense2 = self._make_dense(
             n_channels, growth_rate, n_dense_blocks, bottleneck, use_dropout
         )
@@ -104,6 +128,7 @@ class DenseNet(nn.Module):
         self.trans2 = _Transition(n_channels, n_out_channels, use_dropout)
 
         n_channels = n_out_channels
+        # Tercer bloque denso
         self.dense3 = self._make_dense(
             n_channels, growth_rate, n_dense_blocks, bottleneck, use_dropout
         )
@@ -113,6 +138,9 @@ class DenseNet(nn.Module):
 
     @staticmethod
     def _make_dense(n_channels, growth_rate, n_dense_blocks, bottleneck, use_dropout):
+        """
+        Crea una secuencia de capas densas (_Bottleneck o _SingleLayer).
+        """
         layers = []
         for _ in range(int(n_dense_blocks)):
             if bottleneck:
@@ -123,9 +151,12 @@ class DenseNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x, x_mask):
+        """
+        Procesa la imagen de entrada a través de los bloques densos y las capas de transición.
+        """
         out = self.conv1(x)
         out = self.norm1(out)
-        out_mask = x_mask[:, 0::2, 0::2]
+        out_mask = x_mask[:, 0::2, 0::2]  # Reducir máscara espacialmente
         out = F.relu(out, inplace=True)
         out = F.max_pool2d(out, 2, ceil_mode=True)
         out_mask = out_mask[:, 0::2, 0::2]
@@ -139,15 +170,21 @@ class DenseNet(nn.Module):
         out = self.post_norm(out)
         return out, out_mask
 
-
 class Encoder(pl.LightningModule):
+    """
+    Implementa el encoder visual basado en DenseNet.
+    Este encoder extrae características visuales de las imágenes de entrada y les añade información posicional 2D.
+    Las características producidas son consumidas como K y V en el Cross-Attention de decoder.py.
+    """
     def __init__(self, d_model: int, growth_rate: int, num_layers: int):
         super().__init__()
 
         self.model = DenseNet(growth_rate=growth_rate, num_layers=num_layers)
 
+        # Proyección de características al espacio de dimensión d_model
         self.feature_proj = nn.Conv2d(self.model.out_channels, d_model, kernel_size=1)
 
+        # Codificación posicional 2D
         self.pos_enc_2d = ImgPosEnc(d_model, normalize=True)
 
         self.norm = nn.LayerNorm(d_model)
@@ -155,30 +192,31 @@ class Encoder(pl.LightningModule):
     def forward(
         self, img: FloatTensor, img_mask: LongTensor
     ) -> Tuple[FloatTensor, LongTensor]:
-        """encode image to feature
+        """
+        Codifica la imagen de entrada en características visuales con información posicional.
 
-        Parameters
+        Parámetros
         ----------
         img : FloatTensor
             [b, 1, h', w']
         img_mask: LongTensor
             [b, h', w']
 
-        Returns
+        Retorna
         -------
         Tuple[FloatTensor, LongTensor]
             [b, h, w, d], [b, h, w]
         """
-        # extract feature
+        # Extraer características visuales
         feature, mask = self.model(img, img_mask)
         feature = self.feature_proj(feature)
 
-        # proj
+        # Reorganizar dimensiones para añadir codificación posicional
         feature = rearrange(feature, "b d h w -> b h w d")
 
-        # positional encoding
+        # Añadir codificación posicional
         feature = self.pos_enc_2d(feature, mask)
         feature = self.norm(feature)
 
-        # flat to 1-D
+        # Retornar características y máscara
         return feature, mask

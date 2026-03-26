@@ -10,14 +10,14 @@ import torchvision.transforms as transforms
 import base64
 from io import BytesIO
 
-# ── Configuración de página ──────────────────────────────────────────────────
+# Configuración inicial de la página de la aplicación web con Streamlit
 st.set_page_config(
     page_title="PosFormer · Reconocimiento Matemático",
-    page_icon="🔣",
+    page_icon="😃",
     layout="wide",
 )
 
-# ── CSS ──────────────────────────────────────────────────────────────────────
+# Estilo personalizado para la interfaz de usuario de Streamlit
 st.markdown("""
 <style>
 /* Fondo morado cálido */
@@ -30,7 +30,7 @@ st.markdown("""
     background: transparent !important;
 }
 
-/* Padding y ancho máximo */
+/* Configuración de padding y ancho máximo */
 [data-testid="stAppViewBlockContainer"] {
     padding-left: 2.5rem !important;
     padding-right: 2.5rem !important;
@@ -39,7 +39,7 @@ st.markdown("""
     max-width: 1150px !important;
 }
 
-/* Tarjetas */
+/* Estilo de las tarjetas */
 .card {
     background: rgba(255, 252, 255, 0.82);
     border-radius: 16px;
@@ -54,7 +54,7 @@ st.markdown("""
     margin: 0 0 0.75rem;
 }
 
-/* Badge */
+/* Estilo de los badges */
 .badge {
     display: inline-block;
     background: #ead9f7;
@@ -67,7 +67,7 @@ st.markdown("""
     margin-bottom: 6px;
 }
 
-/* Upload */
+/* Estilo del cargador de archivos */
 [data-testid="stFileUploader"] {
     border: 1.5px dashed #a07cc5 !important;
     border-radius: 12px !important;
@@ -82,7 +82,7 @@ st.markdown("""
     font-weight: 600 !important;
 }
 
-/* st.latex grande */
+/* Ajustes de tamaño para renderizado de fórmulas LaTeX */
 [data-testid="stMarkdownContainer"] .katex-display {
     font-size: 1.9em !important;
 }
@@ -90,7 +90,7 @@ st.markdown("""
     font-size: 1.7em !important;
 }
 
-/* st.code fondo oscuro morado */
+/* Estilo del código */
 [data-testid="stCode"] pre {
     background: #1e0f30 !important;
     color: #e8d5f5 !important;
@@ -98,13 +98,13 @@ st.markdown("""
     font-size: 13px !important;
 }
 
-/* Alertas */
+/* Estilo de las alertas */
 [data-testid="stAlert"] {
     border-radius: 10px !important;
     font-weight: 500 !important;
 }
 
-/* Expander estilizado */
+/* Estilo de los expanders */
 [data-testid="stExpander"] {
     background: rgba(255, 252, 255, 0.72) !important;
     border-radius: 14px !important;
@@ -112,26 +112,37 @@ st.markdown("""
     margin-bottom: 0.75rem;
 }
 
-/* Spinner */
+/* Estilo del spinner */
 [data-testid="stSpinner"] { color: #7c4dab; }
 hr { border-color: rgba(160, 124, 197, 0.25); }
 
-/* Reducir espacio entre elementos Streamlit */
+/* Reducir espacio entre elementos de Streamlit */
 [data-testid="stVerticalBlock"] > div { margin-bottom: 0 !important; }
 .element-container { margin-bottom: 0.4rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Cargar modelo ────────────────────────────────────────────────────────────
+# Función para cargar el modelo entrenado desde un checkpoint
 @st.cache_resource
+
 def load_model():
+    """
+    Carga el modelo entrenado desde un archivo de checkpoint.
+    El modelo se inicializa en modo evaluación para realizar inferencias.
+    """
     ckp_path = "lightning_logs/version_0/checkpoints/best.ckpt"
     model = LitPosFormer.load_from_checkpoint(ckp_path, map_location="cpu")
     model.eval()
     return model
 
-# ── Preprocesar imagen ───────────────────────────────────────────────────────
+# Función para preprocesar la imagen cargada
+
 def preprocess(image):
+    """
+    Convierte la imagen cargada a escala de grises y la transforma en un tensor.
+    También invierte los colores si el fondo es claro para adaptarse al modelo.
+    Devuelve el tensor de la imagen y una máscara inicializada.
+    """
     transform = transforms.Compose([
         transforms.Grayscale(),
         transforms.ToTensor(),
@@ -142,13 +153,18 @@ def preprocess(image):
     mask = torch.zeros(1, tensor.shape[2], tensor.shape[3], dtype=torch.bool)
     return tensor, mask
 
-# Function to convert an image to base64
+# Función para convertir una imagen a formato base64
+
 def image_to_base64(image):
+    """
+    Convierte una imagen en un string codificado en base64.
+    Esto permite mostrar la imagen en la interfaz web de Streamlit.
+    """
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-# ── HEADER ───────────────────────────────────────────────────────────────────
+# Configuración del encabezado de la aplicación
 header_col, arch_col = st.columns([3, 1])
 
 with header_col:
@@ -156,7 +172,7 @@ with header_col:
     <div style="padding: 0.5rem 0 0.25rem;">
         <span class="badge">CROHME · UAO</span>
         <h1 style="font-size:2rem; font-weight:700; color:#3a1f5c;
-                   letter-spacing:-0.5px; margin:5px 0 3px;">🔣 PosFormer</h1>
+                   letter-spacing:-0.5px; margin:5px 0 3px;">😃 PosFormer</h1>
         <p style="font-size:14px; color:#7a5499; margin:0;">
             Reconocimiento de expresiones matemáticas manuscritas con Transformers
         </p>
@@ -166,6 +182,7 @@ with header_col:
 with arch_col:
     with st.expander("🏗️ Ver arquitectura del modelo", expanded=False):
         try:
+            # Carga y muestra la imagen de la arquitectura del modelo si está disponible
             arch_img = Image.open("images/arquitectura.png")
             st.image(arch_img, use_column_width=True)
         except FileNotFoundError:
@@ -173,13 +190,15 @@ with arch_col:
 
 st.markdown("<hr style='margin: 0.5rem 0 0.75rem;'>", unsafe_allow_html=True)
 
-# ── INFERENCIA (antes de columnas) ───────────────────────────────────────────
+# Inicialización de variables para la inferencia
 image = None
 result = None
 
+# Configuración de las columnas para la interfaz de usuario
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
+    # Sección para cargar la imagen de entrada
     st.markdown('<div class="card"><p class="card-title">🖼️ Cargar imagen</p>', unsafe_allow_html=True)
     uploaded_file = st.file_uploader(
         "Imagen",
@@ -191,21 +210,22 @@ with col_left:
         st.info("Arrastra o selecciona una imagen con una expresión matemática")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Procesar fuera de columnas para que result esté disponible en ambas
+# Procesamiento de la imagen cargada
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     with st.spinner("Reconociendo expresión..."):
+        # Carga el modelo y realiza la inferencia sobre la imagen procesada
         model = load_model()
         tensor, mask = preprocess(image)
         with torch.no_grad():
             hyps = model.approximate_joint_search(tensor, mask)
             result = vocab.indices2label(hyps[0].seq)
 
-# ── COLUMNA IZQUIERDA: Renderizado ───────────────────────────────────────────
+# Renderizado del resultado en formato LaTeX
 with col_left:
     st.markdown('<div class="card"><p class="card-title">📊 Renderizado LaTeX</p>', unsafe_allow_html=True)
     if result is not None:
-        st.latex(result)
+        st.latex(result)  # Muestra el resultado en formato LaTeX
     else:
         st.markdown(
             '<div style="height:85px;display:flex;align-items:center;'
@@ -215,24 +235,25 @@ with col_left:
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ── COLUMNA DERECHA: Vista previa + Código ───────────────────────────────────
+# Vista previa de la imagen cargada y su código LaTeX
 with col_right:
     st.markdown('<div class="card"><p class="card-title">🖼️ Vista previa</p>', unsafe_allow_html=True)
     if image is not None:
+        # Muestra la imagen cargada en la interfaz
         st.markdown(
-            '<div style="display: flex; justify-content: center;">'  # Center the image
+            '<div style="display: flex; justify-content: center;">'  # Centra la imagen
             f'<img src="data:image/png;base64,{image_to_base64(image)}" alt="{uploaded_file.name}" width="450">'
             '</div>',
             unsafe_allow_html=True
         )
-        st.markdown("<br>", unsafe_allow_html=True)  # Add a line break after the image
-        st.success("✓  Expresión reconocida")
+        st.markdown("<br>", unsafe_allow_html=True)  # Agrega un salto de línea después de la imagen
+        st.success("✔  Expresión reconocida")
         st.markdown(
             '<p style="font-size:11px;color:#7a5499;text-transform:uppercase;'
             'letter-spacing:0.07em;margin:0.5rem 0 3px;">Código LaTeX</p>',
             unsafe_allow_html=True,
         )
-        st.code(result, language="latex")
+        st.code(result, language="latex")  # Muestra el código LaTeX generado
     else:
         st.markdown(
             '<div style="height:190px;display:flex;align-items:center;'
@@ -243,7 +264,7 @@ with col_right:
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ── FOOTER ───────────────────────────────────────────────────────────────────
+# Pie de página con información del proyecto
 st.markdown(
     '<p style="text-align:center;font-size:12px;color:#a07cc5;margin-top:1rem;">'
     "PosFormer · Maestría en IA y Ciencia de Datos · UAO</p>",

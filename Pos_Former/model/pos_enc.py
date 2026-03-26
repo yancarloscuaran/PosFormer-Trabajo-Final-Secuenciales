@@ -7,6 +7,13 @@ from einops import rearrange, repeat
 
 
 class WordPosEnc(pl.LightningModule):
+    """
+    Implementa un Positional Encoding sinusoidal fijo para secuencias de tokens.
+    Este módulo se utiliza tanto en el Word Decoder como en el Pos Decoder.
+
+    El parámetro `temperature` controla la frecuencia de las ondas sinusoidales,
+    permitiendo que diferentes dimensiones del embedding tengan diferentes escalas.
+    """
     def __init__(
         self, d_model: int = 512, max_len: int = 500, temperature: float = 10000.0
     ) -> None:
@@ -17,6 +24,7 @@ class WordPosEnc(pl.LightningModule):
         dim_t = torch.arange(0, d_model, 2, dtype=torch.float)
         div_term = 1.0 / (temperature ** (dim_t / d_model))
 
+        # Calcular las ondas sinusoidales para cada posición y dimensión
         inv_freq = torch.einsum("i, j -> i j", position, div_term)
 
         pe[:, 0::2] = inv_freq.sin()
@@ -24,14 +32,15 @@ class WordPosEnc(pl.LightningModule):
         self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """add positional encoding to feature
+        """
+        Añade el encoding posicional a las características de entrada.
 
-        Parameters
+        Parámetros
         ----------
         x : torch.Tensor
             [b, l, d]
 
-        Returns
+        Retorna
         -------
         torch.Tensor
             [b, l, d]
@@ -44,10 +53,12 @@ class WordPosEnc(pl.LightningModule):
 
 class ImgPosEnc(pl.LightningModule):
     """
-    This is a more standard version of the position embedding, very similar to the one
-    used by the Attention is all you need paper, generalized to work on images.
-    """
+    Implementa un Positional Encoding 2D para imágenes.
+    Este módulo se utiliza en el encoder para añadir información posicional a las características visuales.
 
+    Combina las posiciones en los ejes x e y para generar un vector de posición único
+    para cada región de la imagen.
+    """
     def __init__(
         self,
         d_model: int = 512,
@@ -67,16 +78,17 @@ class ImgPosEnc(pl.LightningModule):
         self.scale = scale
 
     def forward(self, x: torch.Tensor, mask: torch.LongTensor) -> torch.Tensor:
-        """add image positional encoding to feature
+        """
+        Añade el encoding posicional 2D a las características de entrada.
 
-        Parameters
+        Parámetros
         ----------
         x : torch.Tensor
             [b, h, w, d]
         mask: torch.LongTensor
             [b, h, w]
 
-        Returns
+        Retorna
         -------
         torch.Tensor
             [b, h, w, d]
@@ -94,6 +106,7 @@ class ImgPosEnc(pl.LightningModule):
         )
         inv_feq = 1.0 / (self.temperature ** (dim_t / self.half_d_model))
 
+        # Calcular las posiciones sinusoidales para x e y
         pos_x = torch.einsum("b h w, d -> b h w d", x_embed, inv_feq)
         pos_y = torch.einsum("b h w, d -> b h w d", y_embed, inv_feq)
 
@@ -106,6 +119,7 @@ class ImgPosEnc(pl.LightningModule):
 
 
 def rotate_every_two(x: torch.FloatTensor):
+    # Función auxiliar para rotar pares de dimensiones en embeddings rotatorios
     x = rearrange(x, "... (d j) -> ... d j", j=2)
     x1, x2 = x.unbind(dim=-1)
     x = torch.stack((-x2, x1), dim=-1)
@@ -114,14 +128,10 @@ def rotate_every_two(x: torch.FloatTensor):
 
 class WordRotaryEmbed(pl.LightningModule):
     """
-    Rotary Positional Embedding
-    Ref : https://zhuanlan.zhihu.com/p/359502624
-        : https://blog.eleuther.ai/rotary-embeddings/
-        : https://arxiv.org/abs/2104.09864
-
-    lucidrains implementation: https://github.com/lucidrains/perceiver-pytorch/blob/main/perceiver_pytorch/rotary.py
+    Implementa un Rotary Positional Embedding para secuencias de tokens.
+    Este método es una alternativa al encoding sinusoidal estándar y permite
+    rotar las posiciones en pares de dimensiones.
     """
-
     def __init__(self, d_model: int = 512, temperature: float = 10000.0) -> None:
         super().__init__()
         inv_freq = 1.0 / (
@@ -130,14 +140,15 @@ class WordRotaryEmbed(pl.LightningModule):
         self.register_buffer("inv_freq", inv_freq)
 
     def forward(self, x: torch.FloatTensor):
-        """apply positional encoding to feature
+        """
+        Aplica el encoding rotatorio a las características de entrada.
 
-        Parameters
+        Parámetros
         ----------
         x : torch.Tensor
             [b, l, d]
 
-        Returns
+        Retorna
         -------
         torch.Tensor
             [b, l, d]
@@ -155,9 +166,9 @@ class WordRotaryEmbed(pl.LightningModule):
 
 class ImageRotaryEmbed(pl.LightningModule):
     """
-    2-D Generalized version of WordRotaryEmbedding
+    Implementa un Rotary Positional Embedding 2D para imágenes.
+    Este método es una generalización del WordRotaryEmbed para trabajar con datos 2D.
     """
-
     def __init__(
         self,
         d_model: int = 512,
@@ -177,16 +188,17 @@ class ImageRotaryEmbed(pl.LightningModule):
         self.scale = scale
 
     def forward(self, x: torch.Tensor, mask: torch.LongTensor) -> torch.Tensor:
-        """apply image positional encoding to feature
+        """
+        Aplica el encoding rotatorio 2D a las características de entrada.
 
-        Parameters
+        Parámetros
         ----------
         x : torch.Tensor
             [b, h, w, d]
         mask: torch.LongTensor
             [b, h, w]
 
-        Returns
+        Retorna
         -------
         torch.Tensor
             [b, h, w, d]
@@ -204,17 +216,16 @@ class ImageRotaryEmbed(pl.LightningModule):
         )
         inv_feq = 1.0 / (self.temperature ** (dim_t / self.half_d_model))
 
-        # [b, h, w, d_model // 4]
+        # Calcular posiciones sinusoidales para x e y
         pos_x = torch.einsum("b h w, d -> b h w d", embed_x, inv_feq)
         pos_y = torch.einsum("b h w, d -> b h w d", embed_y, inv_feq)
 
-        # [b, h, w, d_model // 2]
+        # Combinar posiciones sinusoidales
         sin_x, cos_x, sin_y, cos_y = map(
             lambda t: repeat(t, "b h w d -> b h w (d n)", n=2),
             (pos_x.sin(), pos_x.cos(), pos_y.sin(), pos_y.cos()),
         )
 
-        # [b, h, w, d_model]
         sin = torch.cat((sin_x, sin_y), dim=-1)
         cos = torch.cat((cos_x, cos_y), dim=-1)
 

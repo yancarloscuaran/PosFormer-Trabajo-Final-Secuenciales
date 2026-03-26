@@ -1,3 +1,12 @@
+"""
+Clase LitPosFormer:
+Esta clase envuelve el modelo PosFormer utilizando PyTorch Lightning, lo que facilita el manejo del entrenamiento, validación e inferencia.
+PyTorch Lightning agrega funcionalidades como el registro automático de métricas, manejo de optimizadores y programadores de tasa de aprendizaje, y soporte para entrenamiento distribuido.
+
+LitPosFormer es el punto de entrada principal para el entrenamiento y la inferencia del modelo PosFormer. 
+Es instanciada en app.py y en scripts/test/test.py, y utiliza internamente el modelo definido en posformer.py.
+"""
+
 import zipfile
 from typing import List , Tuple
 import time
@@ -56,25 +65,29 @@ class LitPosFormer(pl.LightningModule):
     def forward(
         self, img: FloatTensor, img_mask: LongTensor, tgt: LongTensor, logger
     ) -> Tuple[FloatTensor,FloatTensor]:
-        """run img and bi-tgt
+        """
+        Método forward:
+        Llama al modelo PosFormer para procesar las imágenes y generar las predicciones.
 
-        Parameters
-        ----------
-        img : FloatTensor
-            [b, 1, h, w]
-        img_mask: LongTensor
-            [b, h, w]
-        tgt : LongTensor
-            [2b, l]
+        Parámetros:
+        - `img`: Tensor de imágenes de entrada con dimensiones [b, 1, h, w].
+        - `img_mask`: Máscara de las imágenes con dimensiones [b, h, w].
+        - `tgt`: Tensor de etiquetas objetivo con dimensiones [2b, l].
 
-        Returns
-        -------
-        FloatTensor
-            [2b, l, vocab_size]
+        Retorna:
+        - Predicciones del modelo con dimensiones [2b, l, vocab_size].
         """
         return self.model(img, img_mask, tgt, logger)
 
-    def training_step(self, batch: Batch, _):      
+    def training_step(self, batch: Batch, _):
+        """
+        Paso de entrenamiento:
+        Calcula la pérdida combinada de los tres componentes: salida principal, salida de capas y salida de posiciones.
+        La pérdida combinada se calcula como:
+        loss_total = (loss_principal + 0.25 * loss_capas + 0.25 * loss_posiciones) / 1.5
+
+        Registra las métricas de pérdida para monitoreo durante el entrenamiento.
+        """
         tgt, out = to_bi_tgt_out(batch.indices, self.device)
         out_hat , out_hat_layer ,out_hat_pos = self(batch.imgs, batch.mask, tgt , self.trainer.logger)
         tgt_list=tgt.cpu().numpy().tolist()
@@ -91,6 +104,11 @@ class LitPosFormer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch: Batch, _):
+        """
+        Paso de validación:
+        Similar al paso de entrenamiento, pero incluye el cálculo de la tasa de reconocimiento de expresiones (ExpRate).
+        Registra las métricas de pérdida y ExpRate para monitoreo durante la validación.
+        """
         tgt, out = to_bi_tgt_out(batch.indices, self.device)
         out_hat , out_hat_layer ,out_hat_pos = self(batch.imgs, batch.mask, tgt,self.trainer.logger)
         
@@ -143,6 +161,11 @@ class LitPosFormer(pl.LightningModule):
         )
 
     def test_step(self, batch: Batch, _):
+        """
+        Paso de prueba:
+        Realiza inferencia sobre un lote de datos y mide el tiempo de inferencia.
+        Utiliza el método approximate_joint_search para generar hipótesis con Beam Search.
+        """
         start_time = time.time()  # Start timing
         hyps = self.approximate_joint_search(batch.imgs, batch.mask)
         inference_time = time.time() - start_time  # Compute inference time for this batch
@@ -151,6 +174,11 @@ class LitPosFormer(pl.LightningModule):
         return batch.img_bases, [vocab.indices2label(h.seq) for h in hyps], inference_time
 
     def test_epoch_end(self, test_outputs) -> None:
+        """
+        Finalización de la época de prueba:
+        Calcula el tiempo total de inferencia y la tasa de reconocimiento de expresiones (ExpRate).
+        Guarda los resultados en un archivo ZIP para su análisis posterior.
+        """
         total_inference_time = sum(output[2] for output in test_outputs)  # Sum up the inference times
         print(f"Total Inference Time: {total_inference_time} seconds")
 
@@ -165,9 +193,21 @@ class LitPosFormer(pl.LightningModule):
     def approximate_joint_search(
         self, img: FloatTensor, mask: LongTensor
     ) -> List[Hypothesis]:
+        """
+        Búsqueda conjunta aproximada:
+        Método utilizado para inferencia, llamado desde app.py.
+        Implementa Beam Search para generar hipótesis basadas en las imágenes de entrada.
+
+        Durante la inferencia, solo participa el Word Decoder, omitiendo el Pos Decoder.
+        """
         return self.model.beam_search(img, mask, **self.hparams)
 
     def configure_optimizers(self):
+        """
+        Configuración de optimizadores y programadores de tasa de aprendizaje:
+        Utiliza SGD como optimizador y ReduceLROnPlateau como programador para ajustar la tasa de aprendizaje
+        en función de la métrica de validación (ExpRate).
+        """
         optimizer = optim.SGD(
             self.parameters(),
             lr=self.hparams.learning_rate,
