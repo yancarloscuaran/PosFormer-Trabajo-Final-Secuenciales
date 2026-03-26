@@ -102,7 +102,7 @@ MIT License - Ver [LICENSE](LICENSE)
 
 # Marco Teórico: Explicación Detallada de la Arquitectura PosFormer
 
-<img width="2000" height="1143" alt="image" src="https://github.com/user-attachments/assets/65262cde-df73-48ba-9d7a-198027484863" />
+<img width="1964" height="1103" alt="image" src="https://github.com/user-attachments/assets/c695b1f1-e772-4d6e-bdc6-7b36eb8154b9" />
 
 
 Fuente: Elaboración propia.
